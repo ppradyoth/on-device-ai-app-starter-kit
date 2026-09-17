@@ -1,4 +1,4 @@
-const CACHE_NAME = 'on-device-ai-shell-v1'
+const CACHE_NAME = 'on-device-ai-shell-v2'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())
@@ -10,7 +10,12 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const request = event.request
-  if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return
+  if (
+    request.method !== 'GET' ||
+    new URL(request.url).origin !== self.location.origin ||
+    new URL(request.url).pathname === '/sw.js'
+  )
+    return
   event.respondWith(
     caches.match(request).then(async (cached) => {
       if (cached) return cached
