@@ -2,6 +2,9 @@ import { LoggerWithoutDebug, Wllama } from '@wllama/wllama'
 import wasmUrl from '@wllama/wllama/esm/wasm/wllama.wasm?url'
 import { clearCachedModels, readCachedModel, writeCachedModel } from './model-storage'
 import { ModelIntegrityError, verifyModelBlob } from './hash'
+import { EmbeddingClient } from '../ingestion/embedding-client'
+import { ingestFiles } from '../ingestion/ingestor'
+import { clearLocalDocumentData, deleteDocument } from '../storage/local-db'
 import type {
   AnswerEvent,
   CancellableLocalAIEngine,
@@ -46,6 +49,7 @@ export class WllamaEngine implements CancellableLocalAIEngine {
   private loadAbortController: AbortController | undefined
   private generationAbortController: AbortController | undefined
   private loadedModelId: string | undefined
+  private readonly embeddings = new EmbeddingClient()
 
   async loadModel(
     model: ModelDescriptor,
@@ -88,10 +92,8 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     }
   }
 
-  ingest(_files: File[]): Promise<SourceDocument[]> {
-    return Promise.reject(
-      new Error('Document ingestion is available after the model runtime phase.'),
-    )
+  ingest(files: File[]): Promise<SourceDocument[]> {
+    return ingestFiles(files, this.embeddings)
   }
 
   async *answer(question: string): AsyncIterable<AnswerEvent> {
@@ -124,8 +126,8 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     this.generationAbortController?.abort()
   }
 
-  deleteDocument(_documentId: string): Promise<void> {
-    return Promise.reject(new Error('Document storage is available after the ingestion phase.'))
+  deleteDocument(documentId: string): Promise<void> {
+    return deleteDocument(documentId)
   }
 
   async clearAllLocalData(): Promise<void> {
@@ -133,6 +135,8 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     await this.runtime?.exit()
     this.runtime = undefined
     this.loadedModelId = undefined
+    this.embeddings.dispose()
+    await clearLocalDocumentData()
     await clearCachedModels()
   }
 
@@ -142,5 +146,6 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     await this.runtime?.exit()
     this.runtime = undefined
     this.loadedModelId = undefined
+    this.embeddings.dispose()
   }
 }
