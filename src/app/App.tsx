@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { DEFAULT_MODEL } from '../engine/model-manifest'
 import type { SourceDocument } from '../engine/types'
 import { WllamaEngine } from '../engine/wllama-engine'
-import { listDocuments } from '../storage/local-db'
+import { listChunks, listDocuments } from '../storage/local-db'
 import { detectCapabilities, type CapabilityReport } from '../security/capabilities'
 import './app.css'
 
@@ -40,6 +40,10 @@ export default function App() {
   const [answer, setAnswer] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [documents, setDocuments] = useState<SourceDocument[]>([])
+  const [chunkCounts, setChunkCounts] = useState<Record<string, number>>({})
+  const [sources, setSources] = useState<
+    Array<{ id: string; sourceName: string; text: string; score: number }>
+  >([])
   const [isIndexing, setIsIndexing] = useState(false)
   const engineRef = useRef<WllamaEngine | null>(null)
 
@@ -58,7 +62,7 @@ export default function App() {
       await engine.loadModel(DEFAULT_MODEL, (loaded, total) => {
         setDownloadProgress(total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0)
       })
-      setDocuments(await listDocuments())
+      await refreshDocuments()
       setSetupState('ready')
     } catch (error) {
       setSetupState('error')
@@ -72,7 +76,7 @@ export default function App() {
     setIsIndexing(true)
     try {
       await engineRef.current.ingest(files)
-      setDocuments(await listDocuments())
+      await refreshDocuments()
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Document indexing failed.')
     } finally {
@@ -82,17 +86,32 @@ export default function App() {
 
   const removeDocument = async (documentId: string) => {
     if (!engineRef.current) return
-    await engineRef.current.deleteDocument(documentId)
-    setDocuments(await listDocuments())
+    try {
+      await engineRef.current.deleteDocument(documentId)
+      await refreshDocuments()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Document deletion failed.')
+    }
+  }
+
+  const refreshDocuments = async () => {
+    const [nextDocuments, chunks] = await Promise.all([listDocuments(), listChunks()])
+    const nextCounts: Record<string, number> = {}
+    for (const chunk of chunks)
+      nextCounts[chunk.documentId] = (nextCounts[chunk.documentId] ?? 0) + 1
+    setDocuments(nextDocuments)
+    setChunkCounts(nextCounts)
   }
 
   const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!engineRef.current || !question.trim()) return
     setAnswer('')
+    setSources([])
     setIsGenerating(true)
     for await (const result of engineRef.current.answer(question)) {
       if (result.type === 'token') setAnswer((current) => current + String(result.value))
+      if (result.type === 'sources') setSources(result.value as typeof sources)
       if (result.type === 'error') setErrorMessage(String(result.value))
     }
     setIsGenerating(false)
@@ -204,7 +223,9 @@ export default function App() {
             <ul className="document-list">
               {documents.map((document) => (
                 <li key={document.id}>
-                  <span>{document.name}</span>
+                  <span>
+                    {document.name} · {chunkCounts[document.id] ?? 0} chunks
+                  </span>
                   <button type="button" onClick={() => void removeDocument(document.id)}>
                     Delete
                   </button>
@@ -236,6 +257,20 @@ export default function App() {
             <p className="answer-output" aria-live="polite">
               {answer}
             </p>
+          )}
+          {sources.length > 0 && (
+            <details className="citations" open>
+              <summary>Sources ({sources.length})</summary>
+              <ul>
+                {sources.map((source) => (
+                  <li key={source.id}>
+                    <strong>{source.sourceName}</strong> · {source.id} · score{' '}
+                    {source.score.toFixed(3)}
+                    <p>{source.text}</p>
+                  </li>
+                ))}
+              </ul>
+            </details>
           )}
         </section>
       )}

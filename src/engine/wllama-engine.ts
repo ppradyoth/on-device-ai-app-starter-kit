@@ -4,7 +4,9 @@ import { clearCachedModels, readCachedModel, writeCachedModel } from './model-st
 import { ModelIntegrityError, verifyModelBlob } from './hash'
 import { EmbeddingClient } from '../ingestion/embedding-client'
 import { ingestFiles } from '../ingestion/ingestor'
-import { clearLocalDocumentData, deleteDocument } from '../storage/local-db'
+import { clearLocalDocumentData, deleteDocument, listChunks } from '../storage/local-db'
+import { buildGroundedPrompt, UNSUPPORTED_RESPONSE } from '../retrieval/prompt'
+import { hasRelevantContext, retrieveChunks } from '../retrieval/retrieve'
 import type {
   AnswerEvent,
   CancellableLocalAIEngine,
@@ -103,8 +105,23 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     const controller = new AbortController()
     this.generationAbortController = controller
     try {
+      const chunks = await listChunks()
+      if (chunks.length === 0) {
+        yield { type: 'sources', value: [] }
+        yield { type: 'token', value: UNSUPPORTED_RESPONSE }
+        yield { type: 'complete', value: undefined }
+        return
+      }
+      const questionEmbedding = await this.embeddings.embed([question])
+      const retrieved = retrieveChunks(questionEmbedding[0] ?? [], chunks)
+      yield { type: 'sources', value: retrieved }
+      if (!hasRelevantContext(retrieved)) {
+        yield { type: 'token', value: UNSUPPORTED_RESPONSE }
+        yield { type: 'complete', value: undefined }
+        return
+      }
       const stream = await this.runtime.createChatCompletion({
-        messages: [{ role: 'user', content: question }],
+        messages: [{ role: 'user', content: buildGroundedPrompt(question, retrieved) }],
         max_tokens: MAX_OUTPUT_TOKENS,
         temperature: 0.2,
         stream: true,
