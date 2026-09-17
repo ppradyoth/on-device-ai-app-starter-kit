@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { DEFAULT_MODEL } from '../engine/model-manifest'
-import type { SourceDocument } from '../engine/types'
-import { WllamaEngine } from '../engine/wllama-engine'
+import type { LocalAIEngine, RetrievedChunk, SourceDocument } from '../engine/types'
+import { createEngine } from '../engine/engine-factory'
 import { listChunks, listDocuments } from '../storage/local-db'
 import { detectCapabilities, type CapabilityReport } from '../security/capabilities'
 import './app.css'
 
 type SetupState = 'needs-model' | 'downloading-model' | 'loading-model' | 'ready' | 'error'
+
+interface StorageInfo {
+  usage: number
+  quota: number
+  persisted: boolean
+}
 
 function CapabilityList({ report }: { report: CapabilityReport }) {
   return (
@@ -41,11 +47,11 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [documents, setDocuments] = useState<SourceDocument[]>([])
   const [chunkCounts, setChunkCounts] = useState<Record<string, number>>({})
-  const [sources, setSources] = useState<
-    Array<{ id: string; sourceName: string; text: string; score: number }>
-  >([])
+  const [sources, setSources] = useState<RetrievedChunk[]>([])
   const [isIndexing, setIsIndexing] = useState(false)
-  const engineRef = useRef<WllamaEngine | null>(null)
+  const [storageInfo, setStorageInfo] = useState<StorageInfo | undefined>()
+  const [persistenceMessage, setPersistenceMessage] = useState<string | undefined>()
+  const engineRef = useRef<LocalAIEngine | null>(null)
 
   useEffect(() => {
     return () => {
@@ -56,13 +62,14 @@ export default function App() {
   const loadModel = async () => {
     setErrorMessage(undefined)
     setSetupState('downloading-model')
-    const engine = engineRef.current ?? new WllamaEngine()
+    const engine = engineRef.current ?? createEngine()
     engineRef.current = engine
     try {
       await engine.loadModel(DEFAULT_MODEL, (loaded, total) => {
         setDownloadProgress(total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0)
       })
       await refreshDocuments()
+      await refreshStorage()
       setSetupState('ready')
     } catch (error) {
       setSetupState('error')
@@ -101,6 +108,43 @@ export default function App() {
       nextCounts[chunk.documentId] = (nextCounts[chunk.documentId] ?? 0) + 1
     setDocuments(nextDocuments)
     setChunkCounts(nextCounts)
+  }
+
+  const refreshStorage = async () => {
+    if (!navigator.storage?.estimate) return
+    const estimate = await navigator.storage.estimate()
+    setStorageInfo({
+      usage: estimate.usage ?? 0,
+      quota: estimate.quota ?? 0,
+      persisted: navigator.storage.persisted ? await navigator.storage.persisted() : false,
+    })
+  }
+
+  const requestPersistence = async () => {
+    setPersistenceMessage(undefined)
+    if (!navigator.storage?.persist) {
+      setPersistenceMessage('Persistent storage is not available in this browser.')
+      return
+    }
+    const granted = await navigator.storage.persist()
+    setPersistenceMessage(
+      granted ? 'Persistent storage enabled.' : 'The browser declined persistent storage.',
+    )
+    await refreshStorage()
+  }
+
+  const clearAllLocalData = async () => {
+    if (
+      !engineRef.current ||
+      !window.confirm('Delete the model, documents, index, and local history?')
+    )
+      return
+    await engineRef.current.clearAllLocalData()
+    setDocuments([])
+    setChunkCounts({})
+    setSources([])
+    setAnswer('')
+    await refreshStorage()
   }
 
   const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
@@ -187,6 +231,41 @@ export default function App() {
         )}
         {setupState === 'error' && <p className="error-note">{errorMessage}</p>}
       </section>
+
+      {setupState === 'ready' && (
+        <section className="privacy-card" aria-labelledby="privacy-title">
+          <p className="eyebrow">Verified boundary</p>
+          <h2 id="privacy-title">LOCAL MODE</h2>
+          <ul className="privacy-list">
+            <li>Documents: stored in this browser</li>
+            <li>Embeddings: generated in this browser</li>
+            <li>Retrieval: performed in this browser</li>
+            <li>Generation: performed in this browser</li>
+            <li>Remote inference: disabled</li>
+            <li>Telemetry: disabled</li>
+          </ul>
+          <p className="muted-note">
+            Initial application and model files come from the internet. After those assets are
+            cached, document ingestion and inference do not require a model provider.
+          </p>
+          <div className="privacy-actions">
+            <button type="button" onClick={() => void requestPersistence()}>
+              Keep local data persistent
+            </button>
+            <button type="button" onClick={() => void clearAllLocalData()}>
+              Delete all local data
+            </button>
+          </div>
+          {storageInfo && (
+            <p className="muted-note">
+              Storage estimate: {(storageInfo.usage / 1_000_000).toFixed(1)} MB used of{' '}
+              {(storageInfo.quota / 1_000_000).toFixed(1)} MB available · persistent:{' '}
+              {storageInfo.persisted ? 'yes' : 'no'}
+            </p>
+          )}
+          {persistenceMessage && <p className="muted-note">{persistenceMessage}</p>}
+        </section>
+      )}
 
       {setupState === 'ready' && (
         <section className="documents-card" aria-labelledby="documents-title">
