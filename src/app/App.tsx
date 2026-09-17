@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { DEFAULT_MODEL } from '../engine/model-manifest'
+import type { SourceDocument } from '../engine/types'
 import { WllamaEngine } from '../engine/wllama-engine'
+import { listDocuments } from '../storage/local-db'
 import { detectCapabilities, type CapabilityReport } from '../security/capabilities'
 import './app.css'
 
@@ -37,6 +39,8 @@ export default function App() {
   const [question, setQuestion] = useState('Say hello in one short sentence.')
   const [answer, setAnswer] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [documents, setDocuments] = useState<SourceDocument[]>([])
+  const [isIndexing, setIsIndexing] = useState(false)
   const engineRef = useRef<WllamaEngine | null>(null)
 
   useEffect(() => {
@@ -54,11 +58,32 @@ export default function App() {
       await engine.loadModel(DEFAULT_MODEL, (loaded, total) => {
         setDownloadProgress(total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0)
       })
+      setDocuments(await listDocuments())
       setSetupState('ready')
     } catch (error) {
       setSetupState('error')
       setErrorMessage(error instanceof Error ? error.message : 'Model setup failed.')
     }
+  }
+
+  const ingestDocuments = async (files: File[]) => {
+    if (!engineRef.current || files.length === 0) return
+    setErrorMessage(undefined)
+    setIsIndexing(true)
+    try {
+      await engineRef.current.ingest(files)
+      setDocuments(await listDocuments())
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Document indexing failed.')
+    } finally {
+      setIsIndexing(false)
+    }
+  }
+
+  const removeDocument = async (documentId: string) => {
+    if (!engineRef.current) return
+    await engineRef.current.deleteDocument(documentId)
+    setDocuments(await listDocuments())
   }
 
   const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
@@ -143,6 +168,53 @@ export default function App() {
         )}
         {setupState === 'error' && <p className="error-note">{errorMessage}</p>}
       </section>
+
+      {setupState === 'ready' && (
+        <section className="documents-card" aria-labelledby="documents-title">
+          <p className="eyebrow">Phase 3 local ingestion</p>
+          <h2 id="documents-title">Your documents</h2>
+          <label
+            className="dropzone"
+            onDragOver={(event) => event.preventDefault()}
+            onDrop={(event) => {
+              event.preventDefault()
+              void ingestDocuments(Array.from(event.dataTransfer.files))
+            }}
+          >
+            <span>
+              {isIndexing ? 'Indexing locally…' : 'Drop PDF, Markdown, or text files here'}
+            </span>
+            <input
+              type="file"
+              accept=".pdf,.md,.markdown,.txt,application/pdf,text/markdown,text/plain"
+              multiple
+              disabled={isIndexing}
+              onChange={(event) => {
+                void ingestDocuments(Array.from(event.currentTarget.files ?? []))
+                event.currentTarget.value = ''
+              }}
+            />
+          </label>
+          <p className="muted-note">
+            Maximum 20 MB per file and 20 documents. Files are processed in this browser.
+          </p>
+          {documents.length === 0 ? (
+            <p className="empty-note">No indexed documents yet.</p>
+          ) : (
+            <ul className="document-list">
+              {documents.map((document) => (
+                <li key={document.id}>
+                  <span>{document.name}</span>
+                  <button type="button" onClick={() => void removeDocument(document.id)}>
+                    Delete
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {errorMessage && <p className="error-note">{errorMessage}</p>}
+        </section>
+      )}
 
       {setupState === 'ready' && (
         <section className="chat-card" aria-labelledby="phase-two-chat-title">

@@ -108,12 +108,62 @@ h2 {
 
 .status-card,
 .model-card,
-.chat-card {
+.chat-card,
+.documents-card {
   margin-bottom: 20px;
   padding: 28px;
   border: 1px solid #2c303a;
   border-radius: 20px;
   background: rgba(25, 28, 35, 0.84);
+}
+
+.dropzone {
+  display: grid;
+  place-items: center;
+  min-height: 130px;
+  padding: 24px;
+  border: 1px dashed #5c52a7;
+  border-radius: 12px;
+  background: #1d2028;
+  color: #c9c0ff;
+  text-align: center;
+}
+
+.dropzone input {
+  margin-top: 12px;
+}
+
+.muted-note,
+.empty-note {
+  color: #7f8492;
+  font-size: 0.85rem;
+}
+
+.document-list {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.document-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #2c303a;
+  border-radius: 10px;
+  background: #1d2028;
+}
+
+.document-list button {
+  padding: 7px 10px;
+  border: 1px solid #69434d;
+  border-radius: 8px;
+  background: transparent;
+  color: #ffadb7;
+  cursor: pointer;
 }
 
 .chat-card form {
@@ -270,6 +320,7 @@ h2 {
   .section-heading,
   .model-card,
   .chat-card,
+  .documents-card,
   .footer-note {
     align-items: flex-start;
     flex-direction: column;
