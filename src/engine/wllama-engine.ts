@@ -5,6 +5,7 @@ import { ModelIntegrityError, verifyModelBlob } from './hash'
 import { EmbeddingClient } from '../ingestion/embedding-client'
 import { ingestFiles } from '../ingestion/ingestor'
 import { clearLocalDocumentData, deleteDocument, listChunks } from '../storage/local-db'
+import { createGenerationMetrics } from '../metrics/metrics'
 import { buildGroundedPrompt, UNSUPPORTED_RESPONSE } from '../retrieval/prompt'
 import { hasRelevantContext, retrieveChunks } from '../retrieval/retrieve'
 import type {
@@ -104,11 +105,23 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     if (!question.trim()) throw new Error('Question cannot be empty.')
     const controller = new AbortController()
     this.generationAbortController = controller
+    const startedAt = performance.now()
+    let firstTokenAt: number | undefined
+    let outputUnits = 0
     try {
       const chunks = await listChunks()
       if (chunks.length === 0) {
         yield { type: 'sources', value: [] }
         yield { type: 'token', value: UNSUPPORTED_RESPONSE }
+        yield {
+          type: 'metrics',
+          value: createGenerationMetrics(
+            startedAt,
+            startedAt,
+            UNSUPPORTED_RESPONSE.length,
+            performance.now(),
+          ),
+        }
         yield { type: 'complete', value: undefined }
         return
       }
@@ -117,6 +130,15 @@ export class WllamaEngine implements CancellableLocalAIEngine {
       yield { type: 'sources', value: retrieved }
       if (!hasRelevantContext(retrieved)) {
         yield { type: 'token', value: UNSUPPORTED_RESPONSE }
+        yield {
+          type: 'metrics',
+          value: createGenerationMetrics(
+            startedAt,
+            startedAt,
+            UNSUPPORTED_RESPONSE.length,
+            performance.now(),
+          ),
+        }
         yield { type: 'complete', value: undefined }
         return
       }
@@ -129,7 +151,15 @@ export class WllamaEngine implements CancellableLocalAIEngine {
       })
       for await (const chunk of stream) {
         const token = chunk.choices[0]?.delta.content
-        if (token) yield { type: 'token', value: token }
+        if (token) {
+          firstTokenAt ??= performance.now()
+          outputUnits += token.length
+          yield { type: 'token', value: token }
+        }
+      }
+      yield {
+        type: 'metrics',
+        value: createGenerationMetrics(startedAt, firstTokenAt, outputUnits, performance.now()),
       }
       yield { type: 'complete', value: undefined }
     } catch (error) {

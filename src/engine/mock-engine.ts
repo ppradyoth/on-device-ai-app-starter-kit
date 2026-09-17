@@ -1,5 +1,6 @@
 import type { AnswerEvent, LocalAIEngine, ModelDescriptor, SourceDocument } from './types'
 import { listChunks, saveDocument } from '../storage/local-db'
+import { createGenerationMetrics } from '../metrics/metrics'
 
 export class MockEngine implements LocalAIEngine {
   async loadModel(_model: ModelDescriptor, onProgress: (loaded: number, total: number) => void) {
@@ -32,9 +33,20 @@ export class MockEngine implements LocalAIEngine {
   }
 
   async *answer(_question: string): AsyncIterable<AnswerEvent> {
+    const startedAt = performance.now()
     const chunks = await listChunks()
     yield { type: 'sources', value: chunks.map((chunk) => ({ ...chunk, score: 1 })) }
-    yield { type: 'token', value: `Local answer citing ${chunks[0]?.id ?? 'no source'}.` }
+    const answer = `Local answer citing ${chunks[0]?.id ?? 'no source'}.`
+    yield { type: 'token', value: answer }
+    yield {
+      type: 'metrics',
+      value: createGenerationMetrics(
+        startedAt,
+        performance.now(),
+        answer.length,
+        performance.now(),
+      ),
+    }
     yield { type: 'complete', value: undefined }
   }
 

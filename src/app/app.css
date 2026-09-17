@@ -110,7 +110,8 @@ h2 {
 .model-card,
 .chat-card,
 .documents-card,
-.privacy-card {
+.privacy-card,
+.metrics-card {
   margin-bottom: 20px;
   padding: 28px;
   border: 1px solid #2c303a;
@@ -255,6 +256,26 @@ h2 {
   cursor: pointer;
 }
 
+.metrics-card > button {
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: #b8a8ff;
+  color: #171322;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.error-block {
+  display: grid;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.error-block button {
+  width: fit-content;
+}
+
 .status-pill {
   padding: 8px 10px;
   border-radius: 999px;
@@ -363,6 +384,7 @@ h2 {
   .chat-card,
   .documents-card,
   .privacy-card,
+  .metrics-card,
   .footer-note {
     align-items: flex-start;
     flex-direction: column;
