@@ -15,7 +15,7 @@ import type {
   SourceDocument,
 } from './types'
 
-const MAX_OUTPUT_TOKENS = 32
+const MAX_OUTPUT_TOKENS = 64
 const RUNTIME_CONTEXT_SIZE = 4096
 
 async function downloadModel(
