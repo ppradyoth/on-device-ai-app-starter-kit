@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { DEFAULT_MODEL } from '../engine/model-manifest'
 import type { LocalAIEngine, RetrievedChunk, SourceDocument } from '../engine/types'
 import { createEngine } from '../engine/engine-factory'
+import type { GenerationMetrics } from '../metrics/metrics'
+import { collectDeviceReport, type DeviceReport } from '../security/device'
 import { listChunks, listDocuments } from '../storage/local-db'
 import { detectCapabilities, type CapabilityReport } from '../security/capabilities'
 import './app.css'
@@ -51,6 +53,8 @@ export default function App() {
   const [isIndexing, setIsIndexing] = useState(false)
   const [storageInfo, setStorageInfo] = useState<StorageInfo | undefined>()
   const [persistenceMessage, setPersistenceMessage] = useState<string | undefined>()
+  const [metrics, setMetrics] = useState<GenerationMetrics | undefined>()
+  const [device] = useState<DeviceReport>(collectDeviceReport)
   const engineRef = useRef<LocalAIEngine | null>(null)
 
   useEffect(() => {
@@ -156,9 +160,21 @@ export default function App() {
     for await (const result of engineRef.current.answer(question)) {
       if (result.type === 'token') setAnswer((current) => current + String(result.value))
       if (result.type === 'sources') setSources(result.value as typeof sources)
+      if (result.type === 'metrics') setMetrics(result.value as GenerationMetrics)
       if (result.type === 'error') setErrorMessage(String(result.value))
     }
     setIsGenerating(false)
+  }
+
+  const runBenchmark = async () => {
+    if (!engineRef.current || isGenerating) return
+    setErrorMessage(undefined)
+    for await (const result of engineRef.current.answer(
+      'Answer in one short sentence from these documents.',
+    )) {
+      if (result.type === 'metrics') setMetrics(result.value as GenerationMetrics)
+      if (result.type === 'error') setErrorMessage(String(result.value))
+    }
   }
 
   return (
@@ -229,8 +245,55 @@ export default function App() {
         {setupState === 'ready' && (
           <p className="success-note">Local model loaded. Document ingestion arrives next.</p>
         )}
-        {setupState === 'error' && <p className="error-note">{errorMessage}</p>}
+        {setupState === 'error' && (
+          <div className="error-block">
+            <p className="error-note">{errorMessage}</p>
+            <button type="button" onClick={() => void loadModel()}>
+              Retry setup
+            </button>
+          </div>
+        )}
       </section>
+
+      {setupState === 'ready' && (
+        <section className="metrics-card" aria-labelledby="metrics-title">
+          <p className="eyebrow">Phase 6 measurements</p>
+          <h2 id="metrics-title">Device and runtime report</h2>
+          <dl className="capability-list">
+            <div>
+              <dt>Browser</dt>
+              <dd>{device.userAgent}</dd>
+            </div>
+            <div>
+              <dt>Logical cores</dt>
+              <dd>{device.logicalCores ?? 'Unavailable'}</dd>
+            </div>
+            <div>
+              <dt>Device memory</dt>
+              <dd>
+                {device.deviceMemoryGb === null ? 'Unavailable' : `${device.deviceMemoryGb} GB`}
+              </dd>
+            </div>
+            <div>
+              <dt>Acceleration</dt>
+              <dd>{device.webGpu ? 'WebGPU available' : 'WASM fallback'}</dd>
+            </div>
+          </dl>
+          {metrics && (
+            <p className="muted-note">
+              Last answer: TTFT{' '}
+              {metrics.timeToFirstTokenMs === null
+                ? 'unavailable'
+                : `${metrics.timeToFirstTokenMs.toFixed(0)} ms`}{' '}
+              · {metrics.outputUnits} output characters · {metrics.outputUnitsPerSecond.toFixed(1)}{' '}
+              chars/s
+            </p>
+          )}
+          <button type="button" onClick={() => void runBenchmark()} disabled={isGenerating}>
+            Run measured local answer
+          </button>
+        </section>
+      )}
 
       {setupState === 'ready' && (
         <section className="privacy-card" aria-labelledby="privacy-title">
