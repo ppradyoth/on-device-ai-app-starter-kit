@@ -6,9 +6,10 @@ and uses the wllama WebAssembly runtime fallback.
 
 ## Recorded environment
 
-| Date       | Hardware                     | Operating system | Browser                                             | Result                                                                                                                            |
-| ---------- | ---------------------------- | ---------------- | --------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-09-17 | Apple MacBook Air (M1, 8 GB) | macOS 14.6.1     | Chrome for Testing 153.0.8010.12, Playwright 1.63.0 | Mocked local-mode flow passed: setup, ingestion, citations, deletion, service-worker offline reload, and network positive control |
+| Date       | Hardware                     | Operating system | Browser                                             | Result                                                                                                                                                     |
+| ---------- | ---------------------------- | ---------------- | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-09-17 | Apple MacBook Air (M1, 8 GB) | macOS 14.6.1     | Chrome for Testing 153.0.8010.12, Playwright 1.63.0 | Mocked local-mode flow passed: setup, ingestion, citations, deletion, service-worker offline reload, and network positive control                          |
+| 2026-09-17 | Apple MacBook Air (M1, 8 GB) | macOS 14.6.1     | Chrome for Testing 153.0.8010.12, Playwright 1.63.0 | Deployed central proof passed: explicit model setup, real local indexing, citation, online answer `2026.`, offline answer `2026.`, and zero console errors |
 
 The hardware and operating-system values come from `system_profiler SPHardwareDataType` and
 `sw_vers`. The browser version comes from Playwright's launched Chromium binary. This is one
