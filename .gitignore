@@ -3,6 +3,7 @@ dist/
 coverage/
 .vite/
 .cache/
+.firebase/
 *.log
 
 .env

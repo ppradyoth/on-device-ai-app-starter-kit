@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "ppradyoth"
+  },
+  "targets": {
+    "ppradyoth": {
+      "hosting": {
+        "on-device-ai-app-starter-kit": ["on-device-ai-app-starter-kit"]
+      }
+    }
+  }
+}
