@@ -107,12 +107,61 @@ h2 {
 }
 
 .status-card,
-.model-card {
+.model-card,
+.chat-card {
   margin-bottom: 20px;
   padding: 28px;
   border: 1px solid #2c303a;
   border-radius: 20px;
   background: rgba(25, 28, 35, 0.84);
+}
+
+.chat-card form {
+  display: grid;
+  gap: 10px;
+}
+
+.chat-card label {
+  color: #aeb2bf;
+  font-size: 0.85rem;
+}
+
+.chat-card textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 12px;
+  border: 1px solid #3a3e4a;
+  border-radius: 10px;
+  background: #15171d;
+  color: #f0f1f5;
+  font: inherit;
+}
+
+.chat-card button {
+  width: fit-content;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 10px;
+  background: #b8a8ff;
+  color: #171322;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.chat-card button:disabled {
+  background: #474354;
+  color: #a9a5b2;
+  cursor: not-allowed;
+}
+
+.answer-output {
+  margin: 20px 0 0;
+  padding: 16px;
+  border-left: 3px solid #b8a8ff;
+  background: #1d2028;
+  color: #f0f1f5;
+  line-height: 1.6;
+  white-space: pre-wrap;
 }
 
 .status-pill {
@@ -182,8 +231,29 @@ h2 {
   cursor: not-allowed;
 }
 
-.muted-note {
-  display: none;
+.progress-block {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+  color: #aeb2bf;
+  font-size: 0.8rem;
+}
+
+.progress-block progress {
+  width: 100%;
+  accent-color: #b8a8ff;
+}
+
+.success-note {
+  width: 100%;
+  color: #89e6c1;
+  font-size: 0.85rem;
+}
+
+.error-note {
+  width: 100%;
+  color: #ffadb7;
+  font-size: 0.85rem;
 }
 
 .footer-note {
@@ -199,6 +269,7 @@ h2 {
 
   .section-heading,
   .model-card,
+  .chat-card,
   .footer-note {
     align-items: flex-start;
     flex-direction: column;

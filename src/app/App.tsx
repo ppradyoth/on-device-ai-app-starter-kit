@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { DEFAULT_MODEL } from '../engine/model-manifest'
+import { WllamaEngine } from '../engine/wllama-engine'
 import { detectCapabilities, type CapabilityReport } from '../security/capabilities'
 import './app.css'
 
-const MODEL_SIZE = '639 MB'
+type SetupState = 'needs-model' | 'downloading-model' | 'loading-model' | 'ready' | 'error'
 
 function CapabilityList({ report }: { report: CapabilityReport }) {
   return (
@@ -29,6 +31,47 @@ function CapabilityList({ report }: { report: CapabilityReport }) {
 
 export default function App() {
   const [report] = useState(detectCapabilities)
+  const [setupState, setSetupState] = useState<SetupState>('needs-model')
+  const [downloadProgress, setDownloadProgress] = useState(0)
+  const [errorMessage, setErrorMessage] = useState<string | undefined>()
+  const [question, setQuestion] = useState('Say hello in one short sentence.')
+  const [answer, setAnswer] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const engineRef = useRef<WllamaEngine | null>(null)
+
+  useEffect(() => {
+    return () => {
+      void engineRef.current?.dispose()
+    }
+  }, [])
+
+  const loadModel = async () => {
+    setErrorMessage(undefined)
+    setSetupState('downloading-model')
+    const engine = engineRef.current ?? new WllamaEngine()
+    engineRef.current = engine
+    try {
+      await engine.loadModel(DEFAULT_MODEL, (loaded, total) => {
+        setDownloadProgress(total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0)
+      })
+      setSetupState('ready')
+    } catch (error) {
+      setSetupState('error')
+      setErrorMessage(error instanceof Error ? error.message : 'Model setup failed.')
+    }
+  }
+
+  const askQuestion = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!engineRef.current || !question.trim()) return
+    setAnswer('')
+    setIsGenerating(true)
+    for await (const result of engineRef.current.answer(question)) {
+      if (result.type === 'token') setAnswer((current) => current + String(result.value))
+      if (result.type === 'error') setErrorMessage(String(result.value))
+    }
+    setIsGenerating(false)
+  }
 
   return (
     <main className="page-shell">
@@ -71,14 +114,59 @@ export default function App() {
       <section className="model-card" aria-labelledby="model-title">
         <div>
           <p className="eyebrow">Small default model</p>
-          <h2 id="model-title">Qwen3-0.6B-GGUF</h2>
-          <p>Apache-2.0 · Q8_0 quantization · {MODEL_SIZE} download</p>
+          <h2 id="model-title">{DEFAULT_MODEL.displayName}</h2>
+          <p>
+            {DEFAULT_MODEL.licenseName} · {DEFAULT_MODEL.quantization} quantization ·{' '}
+            {(DEFAULT_MODEL.sizeBytes / 1_000_000).toFixed(0)} MB download
+          </p>
         </div>
-        <button type="button" disabled={!report.supported}>
-          Download model <span aria-hidden="true">→</span>
+        <button
+          type="button"
+          disabled={!report.supported || setupState === 'downloading-model'}
+          onClick={loadModel}
+        >
+          {setupState === 'ready'
+            ? 'Model ready'
+            : setupState === 'downloading-model'
+              ? 'Setting up…'
+              : 'Download model'}{' '}
+          <span aria-hidden="true">→</span>
         </button>
-        <p className="muted-note">Model download and local inference arrive in Phase 2.</p>
+        {setupState === 'downloading-model' && (
+          <div className="progress-block" aria-live="polite">
+            <progress max="100" value={downloadProgress} />
+            <span>{downloadProgress}% — downloading and verifying model</span>
+          </div>
+        )}
+        {setupState === 'ready' && (
+          <p className="success-note">Local model loaded. Document ingestion arrives next.</p>
+        )}
+        {setupState === 'error' && <p className="error-note">{errorMessage}</p>}
       </section>
+
+      {setupState === 'ready' && (
+        <section className="chat-card" aria-labelledby="phase-two-chat-title">
+          <p className="eyebrow">Phase 2 local generation smoke test</p>
+          <h2 id="phase-two-chat-title">Ask the loaded model</h2>
+          <form onSubmit={askQuestion}>
+            <label htmlFor="question">Question</label>
+            <textarea
+              id="question"
+              value={question}
+              onChange={(event) => setQuestion(event.target.value)}
+              rows={3}
+            />
+            <button type="submit" disabled={isGenerating || !question.trim()}>
+              {isGenerating ? 'Generating…' : 'Generate locally'}
+            </button>
+          </form>
+          {answer && (
+            <p className="answer-output" aria-live="polite">
+              {answer}
+            </p>
+          )}
+        </section>
+      )}
 
       <footer className="footer-note">
         <span>Initial app and model downloads require the internet.</span>
