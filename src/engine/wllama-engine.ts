@@ -16,6 +16,7 @@ import type {
 } from './types'
 
 const MAX_OUTPUT_TOKENS = 512
+const RUNTIME_CONTEXT_SIZE = 4096
 
 async function downloadModel(
   model: ModelDescriptor,
@@ -81,7 +82,7 @@ export class WllamaEngine implements CancellableLocalAIEngine {
     runtime.setCompat(null)
     try {
       await runtime.loadModel([blob], {
-        n_ctx: model.contextSize,
+        n_ctx: Math.min(model.contextSize, RUNTIME_CONTEXT_SIZE),
         n_gpu_layers: -1,
         n_threads: -1,
         warmup: true,

@@ -243,7 +243,7 @@ export default function App() {
           </div>
         )}
         {setupState === 'ready' && (
-          <p className="success-note">Local model loaded. Document ingestion arrives next.</p>
+          <p className="success-note">Local model loaded. Documents can be indexed locally.</p>
         )}
         {setupState === 'error' && (
           <div className="error-block">

@@ -34,9 +34,11 @@ same-origin GET responses for the application shell; it does not provide a remot
 - React 19.3.0 and Vite 8.3.0 are pinned in `package.json` and `package-lock.json`.
 - wllama 3.6.1 uses its documented `Wllama` constructor, `loadModel`, streaming
   `createChatCompletion`, `setCompat(null)`, and `exit()` lifecycle.
-- Transformers.js 4.3.0 uses the documented `pipeline('feature-extraction', ...)` path with mean
-  pooling and normalization.
+- Transformers.js 4.3.0 uses the documented `pipeline('feature-extraction', ...)` path with the
+  repository's verified `q4` ONNX artifact, mean pooling, and normalization.
 - PDF.js 6.3.289 uses `getDocument`, `getPage`, `getTextContent`, and `cleanup()`.
+- The Qwen model advertises a 32,768-token context; the browser runtime caps the active context at
+  4,096 to bound memory on CPU/WASM fallback devices.
 
 Official references: [React TypeScript](https://react.dev/learn/typescript),
 [Vite](https://vite.dev/guide/), [wllama](https://github.com/ngxson/wllama),

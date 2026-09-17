@@ -14,7 +14,7 @@ let extractor: EmbeddingPipeline | undefined
 
 async function getExtractor(): Promise<EmbeddingPipeline> {
   extractor ??= (await pipeline('feature-extraction', 'onnx-community/all-MiniLM-L6-v2-ONNX', {
-    dtype: 'q8',
+    dtype: 'q4',
   })) as unknown as EmbeddingPipeline
   return extractor
 }
