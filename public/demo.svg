@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">On-device AI starter kit flow</title>
+  <desc id="desc">An animated illustration of model download, local document indexing, local answers, and offline continuation.</desc>
+  <style>
+    text { font: 700 30px system-ui, sans-serif; fill: #f0f1f5; }
+    .small { font-size: 20px; fill: #aeb2bf; }
+    .box { fill: #1d2028; stroke: #5c52a7; stroke-width: 3; rx: 18; }
+    .arrow { fill: none; stroke: #b8a8ff; stroke-width: 5; stroke-linecap: round; stroke-dasharray: 12 12; animation: move 1.4s linear infinite; }
+    @keyframes move { to { stroke-dashoffset: -24; } }
+  </style>
+  <rect width="1200" height="675" fill="#101216"/>
+  <text x="70" y="90" fill="#a99bff">ON-DEVICE AI · VERIFIED LOCAL FLOW</text>
+  <rect class="box" x="70" y="190" width="230" height="190"/>
+  <text x="105" y="255">Download</text><text class="small" x="105" y="300">user-activated</text><text class="small" x="105" y="330">model setup</text>
+  <rect class="box" x="360" y="190" width="230" height="190"/>
+  <text x="395" y="255">Index</text><text class="small" x="395" y="300">PDF · MD · TXT</text><text class="small" x="395" y="330">in this browser</text>
+  <rect class="box" x="650" y="190" width="230" height="190"/>
+  <text x="685" y="255">Ask</text><text class="small" x="685" y="300">local retrieval</text><text class="small" x="685" y="330">+ citations</text>
+  <rect class="box" x="940" y="190" width="190" height="190"/>
+  <text x="970" y="255">Offline</text><text class="small" x="970" y="300">continue</text><text class="small" x="970" y="330">locally</text>
+  <path class="arrow" d="M315 285h35M605 285h35M895 285h35"/>
+  <text class="small" x="70" y="520">Initial application and model files require the internet.</text>
+  <text class="small" x="70" y="555">After caching, document ingestion, retrieval, and generation run on-device.</text>
+</svg>
