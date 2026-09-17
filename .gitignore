@@ -19,6 +19,7 @@ indexes/
 data/
 test-artifacts/
 playwright-report/
+test-results/
 blob-report/
 browser-profiles/
 storage-state/

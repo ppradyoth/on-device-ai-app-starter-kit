@@ -21,4 +21,15 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'warn',
     },
   },
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        URL: 'readonly',
+        caches: 'readonly',
+        fetch: 'readonly',
+        self: 'readonly',
+      },
+    },
+  },
 )
