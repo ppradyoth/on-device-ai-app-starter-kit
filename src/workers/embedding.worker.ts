@@ -1,4 +1,15 @@
-import { pipeline } from '@huggingface/transformers'
+import { env, pipeline } from '@huggingface/transformers'
+
+const onnxBackend = env.backends.onnx as typeof env.backends.onnx & {
+  wasm: { wasmPaths?: { mjs: string; wasm: string } }
+}
+const ortBaseUrl = import.meta.env.DEV
+  ? 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/'
+  : '/onnxruntime/'
+onnxBackend.wasm.wasmPaths = {
+  mjs: `${ortBaseUrl}ort-wasm-simd-threaded.asyncify.mjs`,
+  wasm: `${ortBaseUrl}ort-wasm-simd-threaded.asyncify.wasm`,
+}
 
 interface EmbeddingWorkerRequest {
   id: number
