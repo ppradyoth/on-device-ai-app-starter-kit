@@ -1,0 +1,17 @@
+{
+  "name": "On-device AI starter kit",
+  "short_name": "On-device AI",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#101216",
+  "theme_color": "#101216",
+  "description": "Browser-local AI document question answering starter kit",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    }
+  ]
+}
