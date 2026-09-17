@@ -1,4 +1,4 @@
-const CACHE_NAME = 'on-device-ai-shell-v2'
+const CACHE_NAME = 'on-device-ai-shell-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(self.skipWaiting())

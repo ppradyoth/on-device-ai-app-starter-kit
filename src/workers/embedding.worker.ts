@@ -3,6 +3,7 @@ import { env, pipeline } from '@huggingface/transformers'
 const onnxBackend = env.backends.onnx as typeof env.backends.onnx & {
   wasm: { wasmPaths?: { mjs: string; wasm: string } }
 }
+env.useWasmCache = false
 const ortBaseUrl = import.meta.env.DEV
   ? 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/'
   : '/onnxruntime/'
